@@ -17,9 +17,11 @@ const (
 	EnvSlackColor    = "SLACK_COLOR"
 	EnvSlackUserName = "SLACK_USERNAME"
 	EnvGithubActor   = "GITHUB_ACTOR"
-	EnvSiteName      = "SITE_NAME"
-	EnvHostName      = "HOST_NAME"
-	EnvDepolyPath    = "DEPLOY_PATH"
+	EnvChangeLogUrl  = "CHANGELOG_URL"
+	EnvReleasesUrl   = "RELEASES_URL"
+	EnvVariantsList  = "VARIANTS"
+	EnvSlackPretext  = "SLACK_PRETEXT"
+	EnvSlackFooter   = "SLACK_FOOTER"
 )
 
 type Webhook struct {
@@ -33,21 +35,29 @@ type Webhook struct {
 }
 
 type Attachment struct {
-	Fallback   string  `json:"fallback"`
-	Pretext    string  `json:"pretext,omitempty"`
-	Color      string  `json:"color,omitempty"`
-	AuthorName string  `json:"author_name,omitempty"`
-	AuthorLink string  `json:"author_link,omitempty"`
-	AuthorIcon string  `json:"author_icon,omitempty"`
-	Footer     string  `json:"footer,omitempty"`
-	Fields     []Field `json:"fields,omitempty"`
-	
+	Text       string   `json:"text,omitempty"`
+	Title      string   `json:"title,omitempty"`
+	Fallback   string   `json:"fallback"`
+	Pretext    string   `json:"pretext,omitempty"`
+	Color      string   `json:"color,omitempty"`
+	AuthorName string   `json:"author_name,omitempty"`
+	AuthorLink string   `json:"author_link,omitempty"`
+	AuthorIcon string   `json:"author_icon,omitempty"`
+	Footer     string   `json:"footer,omitempty"`
+	Fields     []Field  `json:"fields,omitempty"`
+	Actions    []Action `json:"actions,omitempty"`
 }
 
 type Field struct {
 	Title string `json:"title,omitempty"`
 	Value string `json:"value,omitempty"`
 	Short bool   `json:"short,omitempty"`
+}
+
+type Action struct {
+	Type string `json:"type,omitempty"`
+	Text string `json:"text,omitempty"`
+	Url  string `json:"url,omitempty"`
 }
 
 func main() {
@@ -61,44 +71,42 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Message is required")
 		os.Exit(1)
 	}
+	ref := os.Getenv("GITHUB_REF")
+	refShort := ref[11:len(ref)]
 
 	fields:= []Field{
 		{
-			Title: "Ref",
-			Value: os.Getenv("GITHUB_REF"),
-			Short: true,
-		},                {
-			Title: "Event",
-			Value: os.Getenv("GITHUB_EVENT_NAME"),
+			Title: "Version",
+			Value: os.Getenv(EnvSlackTitle),
 			Short: true,
 		},
 		{
-			Title: "Repo Action URL",
-			Value: "https://github.com/" + os.Getenv("GITHUB_REPOSITORY") + "/actions",
-			Short: false,
+			Title: "Variants",
+			Value: os.Getenv(EnvVariantsList),
+			Short: true,
 		},
 		{
-			Title: os.Getenv(EnvSlackTitle),
-			Value: envOr(EnvSlackMessage, "EOM"),
-			Short: false,
+			Title: "Built from",
+			Value: refShort,
+			Short: true,
+		},
+		{
+			Title: "Triggered by",
+			Value: envOr(EnvGithubActor, "N/A"),
+			Short: true,
 		},
 	}
-
-	hostName := os.Getenv(EnvHostName)
-	if hostName != "" {
-		newfields:= []Field{
-			{
-				Title: os.Getenv("SITE_TITLE"),
-				Value: os.Getenv(EnvSiteName),
-				Short: true,
-			},
-			{
-				Title: os.Getenv("HOST_TITLE"),
-				Value: os.Getenv(EnvHostName),
-				Short: true,
-			},
-		}
-		fields = append(newfields, fields...)
+	actions:= []Action {
+		{
+			Type: "button",
+			Text: "Changelog",
+			Url: os.Getenv(EnvChangeLogUrl),
+		},
+		{
+			Type: "button",
+			Text: "Downloads",
+			Url: os.Getenv(EnvReleasesUrl),
+		},
 	}
 
 	msg := Webhook{
@@ -108,12 +116,11 @@ func main() {
 		Attachments: []Attachment{
 			{
 				Fallback: envOr(EnvSlackMessage, "GITHUB_ACTION=" + os.Getenv("GITHUB_ACTION") + " \n GITHUB_ACTOR=" + os.Getenv("GITHUB_ACTOR") + " \n GITHUB_EVENT_NAME=" + os.Getenv("GITHUB_EVENT_NAME") + " \n GITHUB_REF=" + os.Getenv("GITHUB_REF") + " \n GITHUB_REPOSITORY=" + os.Getenv("GITHUB_REPOSITORY") + " \n GITHUB_WORKFLOW=" + os.Getenv("GITHUB_WORKFLOW")),
-				Color:      envOr(EnvSlackColor, "good"),
-				AuthorName: envOr(EnvGithubActor, ""),
-				AuthorLink: "http://github.com/" + os.Getenv(EnvGithubActor),
-				AuthorIcon: "http://github.com/" + os.Getenv(EnvGithubActor) + ".png?size=32",
-				Footer: "<https://github.com/rtCamp/github-actions-library|Powered By rtCamp's GitHub Actions Library>",
-				Fields: fields,
+				Color:    envOr(EnvSlackColor, "good"),
+				Pretext:  envOr(EnvSlackPretext, ""),
+				Footer:   envOr(EnvSlackFooter, ""),
+				Fields:   fields,
+				Actions:  actions,
 			},
 		},
 	}
