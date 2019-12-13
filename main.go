@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 )
 
 const (
@@ -72,7 +73,11 @@ func main() {
 		os.Exit(1)
 	}
 	ref := os.Getenv("GITHUB_REF")
-	refShort := ref[11:len(ref)]
+	refStart := 10
+	if (strings.Contains(ref, "heads") {
+		refStart = 11	
+	}
+	refShort := ref[refStart:len(ref)]
 
 	fields:= []Field{
 		{
