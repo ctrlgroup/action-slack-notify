@@ -74,7 +74,7 @@ func main() {
 	}
 	ref := os.Getenv("GITHUB_REF")
 	refStart := 10
-	if (strings.Contains(ref, "heads") {
+	if strings.Contains(ref, "heads") {
 		refStart = 11	
 	}
 	refShort := ref[refStart:len(ref)]
